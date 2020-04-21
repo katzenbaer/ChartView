@@ -37,9 +37,11 @@ public struct PieChartView : View {
                         .font(.headline)
                         .foregroundColor(self.style.textColor)
                     Spacer()
+                    #if os(iOS)
                     Image(systemName: "chart.pie.fill")
                         .imageScale(.large)
                         .foregroundColor(self.style.legendTextColor)
+                    #endif
                 }.padding()
                 PieChartRow(data: data, backgroundColor: self.style.backgroundColor, accentColor: self.style.accentColor)
                     .foregroundColor(self.style.accentColor).padding(self.legend != nil ? 0 : 12).offset(y:self.legend != nil ? 0 : -10)

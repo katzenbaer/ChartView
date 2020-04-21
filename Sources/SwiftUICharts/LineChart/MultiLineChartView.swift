@@ -85,11 +85,13 @@ public struct MultiLineChartView: View {
                                 .foregroundColor(self.colorScheme == .dark ? self.darkModeStyle.legendTextColor : self.style.legendTextColor)
                         }
                         HStack {
+                            #if os(iOS)
                             if (self.rateValue >= 0){
                                 Image(systemName: "arrow.up")
                             }else{
                                 Image(systemName: "arrow.down")
                             }
+                            #endif
                             Text("\(self.rateValue)%")
                         }
                     }
