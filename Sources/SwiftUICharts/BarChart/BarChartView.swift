@@ -70,11 +70,14 @@ public struct BarChartView : View {
                             .animation(.easeOut)
                     }
                     Spacer()
+                    #if os(iOS)
                     self.cornerImage
-                        #if os(iOS)
                         .imageScale(.large)
-                        #endif
                         .foregroundColor(self.colorScheme == .dark ? self.darkModeStyle.legendTextColor : self.style.legendTextColor)
+                    #else
+                    self.cornerImage
+                        .foregroundColor(self.colorScheme == .dark ? self.darkModeStyle.legendTextColor : self.style.legendTextColor)
+                    #endif
                 }.padding()
                 BarChartRow(data: data.points.map{$0.1},
                             accentColor: self.colorScheme == .dark ? self.darkModeStyle.accentColor : self.style.accentColor,
