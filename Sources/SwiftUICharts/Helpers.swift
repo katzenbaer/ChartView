@@ -274,5 +274,7 @@ class HapticFeedback {
     static func playSelection() -> Void {
         UISelectionFeedbackGenerator().selectionChanged()
     }
+    #else
+    static func playSelection() -> Void { }
     #endif
 }
