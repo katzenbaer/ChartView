@@ -29,7 +29,10 @@ public struct BarChartRow : View {
                                  touchLocation: self.$touchLocation)
                         .scaleEffect(self.touchLocation > CGFloat(i)/CGFloat(self.data.count) && self.touchLocation < CGFloat(i+1)/CGFloat(self.data.count) ? CGSize(width: 1.4, height: 1.1) : CGSize(width: 1, height: 1), anchor: .bottom)
                         .animation(.spring())
-                    
+                    .hoverEffect(.lift)
+                    .onHover { over in
+                        self.touchLocation = over ? (CGFloat(i) + 0.5)/CGFloat(self.data.count) : -1
+                    }
                 }
             }
             .padding([.top, .leading, .trailing], 10)
