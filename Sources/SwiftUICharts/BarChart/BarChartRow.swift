@@ -9,11 +9,32 @@
 import SwiftUI
 
 public struct BarChartRow : View {
-    var data: [Double]
+    @ObservedObject var chartData: ChartData
+    
     var accentColor: Color
     var gradient: GradientColor?
     var maxValue: Double {
-        data.max() ?? 0
+        chartData.onlyPoints().max() ?? 0
+    }
+    
+    func scaleFactor(for location: Int) -> CGSize {
+        guard chartData.points.count > 0 else {
+            return CGSize(width: 1, height: 1)
+        }
+        
+        if self.touchLocation > CGFloat(location)/CGFloat(self.chartData.points.count) && self.touchLocation < CGFloat(location+1)/CGFloat(self.chartData.points.count) {
+            return CGSize(width: 1.4, height: 1.1)
+        } else {
+            return CGSize(width: 1, height: 1)
+        }
+    }
+    
+    func spacing(for geometry: GeometryProxy) -> CGFloat {
+        guard self.chartData.points.count > 0 else {
+            return 0
+        }
+        
+        return (geometry.frame(in: .local).width-22)/CGFloat(self.chartData.points.count * 3)
     }
     
     @Binding var touchLocation: CGFloat
@@ -22,8 +43,8 @@ public struct BarChartRow : View {
     
     public var body: some View {
         GeometryReader { geometry in
-            HStack(alignment: .bottom, spacing: (geometry.frame(in: .local).width-22)/CGFloat(self.data.count * 3)){
-                ForEach(0..<self.data.count, id: \.self) { i in
+            HStack(alignment: .bottom, spacing: self.spacing(for: geometry)) {
+                ForEach(0..<self.chartData.points.count, id: \.self) { i in
                     self.makeBarChartCell(i, geometry: geometry)
                 }
             }
@@ -32,18 +53,24 @@ public struct BarChartRow : View {
     }
     
     func normalizedValue(index: Int) -> Double {
-        return Double(self.data[index])/Double(self.maxValue)
+        guard maxValue > 0 else {
+            return 0
+        }
+        
+        return Double(self.chartData.onlyPoints()[index])/Double(self.maxValue)
     }
     
     func makeBarChartCell(_ i: Int, geometry: GeometryProxy) -> some View {
-        let cell = BarChartCell(value: self.normalizedValue(index: i),
+        let cell = BarChartCell(value: Binding<Double>(
+            get: { self.normalizedValue(index: i) },
+            set: { _ in }),
                             index: i,
                             width: Float(geometry.frame(in: .local).width - 22),
-                            numberOfDataPoints: self.data.count,
+                            numberOfDataPoints: self.chartData.points.count,
                             accentColor: self.accentColor,
                             gradient: self.gradient,
                             touchLocation: self.$touchLocation)
-            .scaleEffect(self.touchLocation > CGFloat(i)/CGFloat(self.data.count) && self.touchLocation < CGFloat(i+1)/CGFloat(self.data.count) ? CGSize(width: 1.4, height: 1.1) : CGSize(width: 1, height: 1), anchor: .bottom)
+            .scaleEffect(self.scaleFactor(for: i), anchor: .bottom)
             .animation(.spring())
         
         return applyHoverIfAvailable(cell, i: i)
@@ -57,7 +84,7 @@ public struct BarChartRow : View {
                     return
                 }
 
-                let touchLocation = (CGFloat(i) + 0.5)/CGFloat(self.data.count)
+                let touchLocation = (self.chartData.points.count > 0) ? (CGFloat(i) + 0.5)/CGFloat(self.chartData.points.count) : 0
                 self.shouldMagnify?(touchLocation)
                 }))
         } else {
@@ -69,7 +96,7 @@ public struct BarChartRow : View {
 #if DEBUG
 struct ChartRow_Previews : PreviewProvider {
     static var previews: some View {
-        BarChartRow(data: [8,23,54,32,12,37,7], accentColor: Colors.OrangeStart, touchLocation: .constant(-1))
+        BarChartRow(chartData: ChartData(points: [8,23,54,32,12,37,7]), accentColor: Colors.OrangeStart, touchLocation: .constant(-1))
     }
 }
 #endif

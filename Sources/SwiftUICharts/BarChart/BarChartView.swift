@@ -20,9 +20,17 @@ public struct BarChartView : View {
     public var cornerImage: Image
     public var valueSpecifier:String
     
+    private var currentIndex: Int {
+        guard self.data.points.count > 0 else {
+            return 0
+        }
+        
+        return max(0,min(self.data.points.count-1,Int(floor((self.touchLocation*self.formSize.width)/(self.formSize.width/CGFloat(self.data.points.count))))))
+    }
     @State private var touchLocation: CGFloat = -1.0
     @State private var showValue: Bool = false
     @State private var showLabelValue: Bool = false
+    @State private var currentValueLabel: String = ""
     @State private var currentValue: Double = 0 {
         didSet{
             if(oldValue != self.currentValue && self.showValue) {
@@ -33,7 +41,7 @@ public struct BarChartView : View {
     var isFullWidth:Bool {
         return self.formSize == ChartForm.large
     }
-    public init(data:ChartData, title: String, legend: String? = nil, style: ChartStyle = Styles.barChartStyleOrangeLight, form: CGSize? = ChartForm.medium, dropShadow: Bool? = true, cornerImage:Image? = nil, valueSpecifier: String? = "%.1f"){
+    public init(data: ChartData, title: String, legend: String? = nil, style: ChartStyle = Styles.barChartStyleOrangeLight, form: CGSize? = ChartForm.medium, dropShadow: Bool? = true, cornerImage:Image? = nil, valueSpecifier: String? = "%.1f"){
         self.data = data
         self.title = title
         self.legend = legend
@@ -79,7 +87,7 @@ public struct BarChartView : View {
                         .foregroundColor(self.colorScheme == .dark ? self.darkModeStyle.legendTextColor : self.style.legendTextColor)
                     #endif
                 }.padding()
-                BarChartRow(data: data.points.map{$0.1},
+                BarChartRow(chartData: data,
                             accentColor: self.colorScheme == .dark ? self.darkModeStyle.accentColor : self.style.accentColor,
                             gradient: self.colorScheme == .dark ? self.darkModeStyle.gradientColor : self.style.gradientColor,
                             touchLocation: self.$touchLocation,
@@ -89,9 +97,9 @@ public struct BarChartView : View {
                         .font(.headline)
                         .foregroundColor(self.colorScheme == .dark ? self.darkModeStyle.legendTextColor : self.style.legendTextColor)
                         .padding()
-                }else if (self.data.valuesGiven && self.getCurrentValue() != nil) {
+                } else if (self.data.valuesGiven) {
                     LabelView(arrowOffset: self.getArrowOffset(touchLocation: self.touchLocation),
-                              title: .constant(self.getCurrentValue()!.0))
+                              title: $currentValueLabel)
                         .offset(x: self.getLabelViewOffset(touchLocation: self.touchLocation), y: -6)
                         .foregroundColor(self.colorScheme == .dark ? self.darkModeStyle.legendTextColor : self.style.legendTextColor)
                 }
@@ -102,11 +110,19 @@ public struct BarChartView : View {
                maxWidth: self.isFullWidth ? .infinity : self.formSize.width,
                minHeight:self.formSize.height,
                maxHeight:self.formSize.height)
+        .onReceive(data.$points, perform: { (points: [(String, Double)]) in
+            guard points.count > self.currentIndex else {
+                return
+            }
+            let currentPoint = points[self.currentIndex]
+            self.currentValueLabel = currentPoint.0
+            self.currentValue = currentPoint.1
+        })
         .gesture(DragGesture()
             .onChanged({ value in
                 self.touchLocation = value.location.x/self.formSize.width
                 self.showValue = true
-                self.currentValue = self.getCurrentValue()?.1 ?? 0
+                self.currentValue = self.data.points[self.currentIndex].1
                 if(self.data.valuesGiven && self.formSize == ChartForm.medium) {
                     self.showLabelValue = true
                 }
@@ -147,12 +163,6 @@ public struct BarChartView : View {
         return min(self.formSize.width-110,max(10,(self.touchLocation * self.formSize.width) - 50))
     }
     
-    func getCurrentValue() -> (String,Double)? {
-        guard self.data.points.count > 0 else { return nil}
-        let index = max(0,min(self.data.points.count-1,Int(floor((self.touchLocation*self.formSize.width)/(self.formSize.width/CGFloat(self.data.points.count))))))
-        return self.data.points[index]
-    }
-    
     func tryMagnify(_ touchLocation: CGFloat) -> Void {
         guard touchLocation != -1 else {
             // Resetting it here causes issues because of a race condition between switching hover elements
@@ -161,7 +171,7 @@ public struct BarChartView : View {
         
         self.touchLocation = touchLocation
         self.showValue = true
-        self.currentValue = self.getCurrentValue()?.1 ?? 0
+        self.currentValue = self.data.points[self.currentIndex].1
         if(self.data.valuesGiven && self.formSize == ChartForm.medium) {
             self.showLabelValue = true
         }
