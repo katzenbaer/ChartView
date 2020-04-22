@@ -46,23 +46,7 @@ public struct BarChartRow : View {
             .scaleEffect(self.touchLocation > CGFloat(i)/CGFloat(self.data.count) && self.touchLocation < CGFloat(i+1)/CGFloat(self.data.count) ? CGSize(width: 1.4, height: 1.1) : CGSize(width: 1, height: 1), anchor: .bottom)
             .animation(.spring())
         
-        return applyHoverEffectsIfAvailable(cell, i: i)
-    }
-    
-    func applyHoverEffectsIfAvailable<T: View>(_ view: T, i: Int) -> some View {
-        typealias ConditionalContent = _ConditionalContent<View, View>
-        
-        #if os(iOS)
-        guard #available(iOS 13.4, *) else {
-            return AnyView(applyHoverIfAvailable(view, i: i))
-        }
-        
-        let view = view.hoverEffect(.lift)
-        let firstContent = applyHoverIfAvailable(view, i: i)
-        return AnyView(firstContent)
-        #else
-        return AnyView(applyHoverIfAvailable(view, i: i))
-        #endif
+        return applyHoverIfAvailable(cell, i: i)
     }
     
     func applyHoverIfAvailable<T: View>(_ view: T, i: Int) -> _ConditionalContent<AnyView, T> {
