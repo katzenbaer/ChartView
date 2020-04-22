@@ -10,7 +10,7 @@ import SwiftUI
 
 public struct BarChartView : View {
     @Environment(\.colorScheme) var colorScheme: ColorScheme
-    private var data: ChartData
+    internal var data: ChartData
     public var title: String
     public var legend: String?
     public var style: ChartStyle
@@ -46,7 +46,7 @@ public struct BarChartView : View {
     }
     
     public var body: some View {
-        ZStack{
+        let stack = ZStack{
             Rectangle()
                 .fill(self.colorScheme == .dark ? self.darkModeStyle.backgroundColor : self.style.backgroundColor)
                 .cornerRadius(20)
@@ -82,7 +82,8 @@ public struct BarChartView : View {
                 BarChartRow(data: data.points.map{$0.1},
                             accentColor: self.colorScheme == .dark ? self.darkModeStyle.accentColor : self.style.accentColor,
                             gradient: self.colorScheme == .dark ? self.darkModeStyle.gradientColor : self.style.gradientColor,
-                            touchLocation: self.$touchLocation)
+                            touchLocation: self.$touchLocation,
+                            shouldMagnify: tryMagnify(_:))
                 if self.legend != nil  && self.formSize == ChartForm.medium && !self.showLabelValue{
                     Text(self.legend!)
                         .font(.headline)
@@ -96,27 +97,39 @@ public struct BarChartView : View {
                 }
                 
             }
-        }.frame(minWidth:self.formSize.width,
-                maxWidth: self.isFullWidth ? .infinity : self.formSize.width,
-                minHeight:self.formSize.height,
-                maxHeight:self.formSize.height)
-            .gesture(DragGesture()
-                .onChanged({ value in
-                    self.touchLocation = value.location.x/self.formSize.width
-                    self.showValue = true
-                    self.currentValue = self.getCurrentValue()?.1 ?? 0
-                    if(self.data.valuesGiven && self.formSize == ChartForm.medium) {
-                        self.showLabelValue = true
-                    }
-                })
-                .onEnded({ value in
-                    self.showValue = false
-                    self.showLabelValue = false
-                    self.touchLocation = -1
-                })
+        }
+        .frame(minWidth:self.formSize.width,
+               maxWidth: self.isFullWidth ? .infinity : self.formSize.width,
+               minHeight:self.formSize.height,
+               maxHeight:self.formSize.height)
+        .gesture(DragGesture()
+            .onChanged({ value in
+                self.touchLocation = value.location.x/self.formSize.width
+                self.showValue = true
+                self.currentValue = self.getCurrentValue()?.1 ?? 0
+                if(self.data.valuesGiven && self.formSize == ChartForm.medium) {
+                    self.showLabelValue = true
+                }
+            })
+            .onEnded({ value in
+                self.showValue = false
+                self.showLabelValue = false
+                self.touchLocation = -1
+            })
         )
-            .gesture(TapGesture()
-        )
+        .gesture(TapGesture())
+        
+        if #available(iOS 13.4, OSX 10.15, *) {
+            return AnyView(stack.onHover { (over) in
+                guard !over else {
+                    return
+                }
+
+                self.resetMagnify()
+            })
+        } else {
+            return AnyView(stack)
+        }
     }
     
     func getArrowOffset(touchLocation:CGFloat) -> Binding<CGFloat> {
@@ -138,6 +151,26 @@ public struct BarChartView : View {
         guard self.data.points.count > 0 else { return nil}
         let index = max(0,min(self.data.points.count-1,Int(floor((self.touchLocation*self.formSize.width)/(self.formSize.width/CGFloat(self.data.points.count))))))
         return self.data.points[index]
+    }
+    
+    func tryMagnify(_ touchLocation: CGFloat) -> Void {
+        guard touchLocation != -1 else {
+            // Resetting it here causes issues because of a race condition between switching hover elements
+            return
+        }
+        
+        self.touchLocation = touchLocation
+        self.showValue = true
+        self.currentValue = self.getCurrentValue()?.1 ?? 0
+        if(self.data.valuesGiven && self.formSize == ChartForm.medium) {
+            self.showLabelValue = true
+        }
+    }
+    
+    func resetMagnify() {
+        self.showValue = false
+        self.showLabelValue = false
+        self.touchLocation = -1
     }
 }
 
